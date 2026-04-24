@@ -1,6 +1,8 @@
 package com.kova.app
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,25 +20,69 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kova.app.domain.detector.DistractionDetector
+import com.kova.app.domain.model.UserProfile
+import com.kova.app.service.KovaMonitorService
 import com.kova.app.ui.theme.KovaTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var detector: DistractionDetector
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        detector = DistractionDetector(this)
         enableEdgeToEdge()
         setContent {
             KovaTheme {
-                AppNavigator()
+                AppNavigator(
+                    detector = detector,
+                    onStartService = { name, goal -> startKovaService(name, goal) },
+                    onOpenPermissions = {
+                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                    }
+                )
             }
+        }
+    }
+
+    private fun startKovaService(name: String, goal: String) {
+        val intent = Intent(this, KovaMonitorService::class.java).apply {
+            putExtra(KovaMonitorService.EXTRA_NAME, name)
+            putExtra(KovaMonitorService.EXTRA_GOAL, goal)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
     }
 }
 
 @Composable
-fun AppNavigator() {
+fun AppNavigator(
+    detector: DistractionDetector,
+    onStartService: (String, String) -> Unit,
+    onOpenPermissions: () -> Unit
+) {
     var currentScreen by remember { mutableStateOf("welcome") }
-    var userName by remember { mutableStateOf("") }
-    var userGoal by remember { mutableStateOf("") }
+    var userProfile by remember { mutableStateOf(UserProfile()) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == "home") {
+            scope.launch {
+                while (true) {
+                    if (detector.isDistracted(userProfile)) {
+                        currentScreen = "alert"
+                    }
+                    delay(5000)
+                }
+            }
+        }
+    }
 
     when (currentScreen) {
         "welcome" -> WelcomeScreen(
@@ -44,14 +90,32 @@ fun AppNavigator() {
         )
         "onboarding" -> OnboardingScreen(
             onFinish = { name, goal ->
-                userName = name
-                userGoal = goal
-                currentScreen = "home"
+                userProfile = UserProfile(name = name, goal = goal)
+                if (!detector.hasPermission()) {
+                    currentScreen = "permission"
+                } else {
+                    onStartService(name, goal)
+                    currentScreen = "home"
+                }
+            }
+        )
+        "permission" -> PermissionScreen(
+            onGrantPermission = onOpenPermissions,
+            onCheckPermission = {
+                if (detector.hasPermission()) {
+                    onStartService(userProfile.name, userProfile.goal)
+                    currentScreen = "home"
+                }
             }
         )
         "home" -> HomeScreen(
-            userName = userName,
-            userGoal = userGoal
+            userName = userProfile.name,
+            userGoal = userProfile.goal
+        )
+        "alert" -> AlertScreen(
+            userName = userProfile.name,
+            userGoal = userProfile.goal,
+            onDismiss = { currentScreen = "home" }
         )
     }
 }
@@ -197,6 +261,68 @@ fun OnboardingScreen(onFinish: (String, String) -> Unit) {
 }
 
 @Composable
+fun PermissionScreen(
+    onGrantPermission: () -> Unit,
+    onCheckPermission: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0D0D0D)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(
+                text = "One permission needed",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFFFFFF),
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Kova needs to see which apps you use so it can alert you when you get distracted.\n\nYour data never leaves your device.",
+                fontSize = 15.sp,
+                color = Color(0xFF9E9E9E),
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    onGrantPermission()
+                    scope.launch {
+                        while (true) {
+                            delay(1000)
+                            onCheckPermission()
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFFFFF)
+                )
+            ) {
+                Text(
+                    text = "Grant permission",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0D0D0D)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun HomeScreen(userName: String, userGoal: String) {
     Box(
         modifier = Modifier
@@ -230,6 +356,61 @@ fun HomeScreen(userName: String, userGoal: String) {
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp
             )
+        }
+    }
+}
+
+@Composable
+fun AlertScreen(userName: String, userGoal: String, onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1A0000)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(
+                text = "⚠️",
+                fontSize = 52.sp,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "$userName, you're getting distracted.",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFFFFFF),
+                textAlign = TextAlign.Center,
+                lineHeight = 32.sp
+            )
+            Text(
+                text = "Remember your goal:\n$userGoal",
+                fontSize = 16.sp,
+                color = Color(0xFF9E9E9E),
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFFFFF)
+                )
+            ) {
+                Text(
+                    text = "Back to work",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0D0D0D)
+                )
+            }
         }
     }
 }
