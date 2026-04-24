@@ -1,4 +1,4 @@
-# PersonalAsistance AI
+# Kova
 
 An AI-powered personal operating system that understands your goals and 
 orchestrates your time, focus, and habits around them — proactively, 
