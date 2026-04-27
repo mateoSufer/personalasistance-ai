@@ -1,4 +1,4 @@
-package com.kova.app.service
+﻿package com.kova.app.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -41,7 +41,7 @@ class KovaMonitorService : Service() {
     private fun startMonitoring() {
         serviceScope.launch {
             while (true) {
-                if (detector.hasPermission() && detector.isDistracted(userProfile)) {
+                if (!detector.isPaused && detector.hasPermission() && detector.isDistracted(userProfile)) {
                     sendDistractionAlert(userProfile)
                 }
                 delay(5000)

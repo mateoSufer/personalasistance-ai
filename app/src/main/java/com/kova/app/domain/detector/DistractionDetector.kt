@@ -1,4 +1,4 @@
-package com.kova.app.domain.detector
+﻿package com.kova.app.domain.detector
 
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
@@ -6,6 +6,9 @@ import android.content.Context
 import com.kova.app.domain.model.UserProfile
 
 class DistractionDetector(private val context: Context) {
+
+    var isPaused: Boolean = false
+
 
     fun hasPermission(): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager

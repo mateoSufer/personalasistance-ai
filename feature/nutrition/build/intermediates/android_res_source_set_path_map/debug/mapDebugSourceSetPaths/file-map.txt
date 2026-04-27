@@ -1,0 +1,8 @@
+com.kova.nutrition-pngs-0 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\build\generated\res\pngs\debug
+com.kova.nutrition-updated_navigation_xml-1 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\build\generated\updated_navigation_xml\debug
+com.kova.nutrition-mergeDebugResources-2 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.kova.nutrition-mergeDebugResources-3 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.kova.nutrition-debug-4 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\build\intermediates\merged_res\debug\mergeDebugResources
+com.kova.nutrition-debug-5 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\build\intermediates\packaged_res\debug\packageDebugResources
+com.kova.nutrition-debug-6 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\src\debug\res
+com.kova.nutrition-main-7 C:\Users\mateo\AndroidStudioProjects\Kova\feature\nutrition\src\main\res

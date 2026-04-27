@@ -1,4 +1,4 @@
-pluginManagement {
+﻿pluginManagement {
     repositories {
         google {
             content {
@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Kova"
 include(":app")
+include(":feature:nutrition")
